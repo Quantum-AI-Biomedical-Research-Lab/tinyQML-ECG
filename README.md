@@ -12,6 +12,6 @@ This is the repository for the project:
 
 **Principal investigator:** Renata Wong, Department of Artificial Intelligence, Chang Gung University
 
-**Co-investigator:** Tianqi Chen, A*STAR, Singapore
+**Co-investigator:** Tianqi Chen, Agency for Science, Technology and Research (A*STAR), Singapore
 
 **Research assistant:** Tran Minh Trung (MOE TEEP intern), AISeQ Laboratory, University of Information Technology, Vietnam National University, Ho Chi Minh City
