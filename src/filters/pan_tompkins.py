@@ -17,13 +17,13 @@ class PanTompkinsFilter:
     
     def __init__(
             self,
-            fs: float = 500.0, 
+            fs: float = 100.0, 
             fc_low: float = 11.0,
             fc_high: float = 5.0,
-            mwi_ms: float = 62.0,
+            mwi_ms: float = 150.0,
             refractory_ms: float = 200.0,
             t_wave_ms: float = 360.0,
-            qs_search_ms: float = 80.0,
+            qs_search_ms: float = 100.0,
             learn_s: float = 2.0,
             m_lp: int | None = None,
             m_hp: int | None = None
@@ -68,7 +68,7 @@ class PanTompkinsFilter:
         return float(self._f[np.argmax(self._lp_magnitude(m) < (1.0 / np.sqrt(2.0)))])
 
     def _hp_cutoff(self, m: int) -> float:
-        return float(self._f[np.argmax(self._hp_magnitude(m) < (1.0 / np.sqrt(2.0)))])
+        return float(self._f[np.argmax(self._hp_magnitude(m) >= (1.0 / np.sqrt(2.0)))])
 
     def frequency_response(self, n: int = 2048):
         f = np.linspace(1e-6, self.fs / 2, n)
@@ -130,13 +130,17 @@ class PanTompkinsFilter:
     def _adaptive_threshold(self, bp: np.ndarray, d: np.ndarray, mwi: np.ndarray):
         abs_bp = np.abs(bp)
         learn = max(1, min(len(mwi), self.learn_len))
+        # config1
         spki, npki = 0.25 * mwi[:learn].max(), 0.5 * mwi[:learn].mean()
         spkf, npkf = 0.25 * abs_bp[:learn].max(), 0.5 * abs_bp[:learn].mean()
+        # config2
+        # spki, npki = 0.5 * mwi[:learn].max(), mwi[:learn].mean()
+        # spkf, npkf = 0.5 * abs_bp[:learn].max(), abs_bp[:learn].mean()
         def thresholds():
             t1i = npki + 0.25 * (spki - npki)
             t1f = npkf + 0.25 * (spkf - npkf)
             return t1i, 0.5 * t1i, t1f, 0.5 * t1f
-        peaks, _ = find_peaks(mwi)
+        peaks, _ = find_peaks(mwi, distance=max(1, int(0.2 * self.fs)))
         back = self.mwi_width + self.delay_der
         qrs, slopes, rr, pending, trace = [], [], [], [], []
         for p in peaks:
@@ -167,7 +171,7 @@ class PanTompkinsFilter:
                 slopes.append(slope)
                 spki = 0.125 * pki + 0.875 * spki
                 spkf = 0.125 * pkf + 0.875 * spkf
-                pennding =[]
+                pending =[]
             else:
                 npki = 0.125 * pki + 0.875 * npki
                 npkf = 0.125 * pkf + 0.875 * npkf
@@ -178,11 +182,11 @@ class PanTompkinsFilter:
 
     def _qrs_points(self, x: np.ndarray, qrs_mwi: np.ndarray):
         shift = self.delay_lp + self.delay_hp + self.delay_der + (self.mwi_width - 1) / 2
-        haft = round(1.0 * self.fs)
+        half = round(0.15 * self.fs)
         q_list, r_list, s_list = [], [], []
         for p in qrs_mwi:
             c = int(round(p - shift))
-            lo, hi = max(0, c - half), min(len(x), c + hafe + 1)
+            lo, hi = max(0, c - half), min(len(x), c + half + 1)
             if hi - lo < 3:
                 continue
             r = lo + int(np.argmax(x[lo:hi]))
@@ -201,18 +205,18 @@ class PanTompkinsFilter:
         q, r, s = self._qrs_points(x, qrs_mwi)
         qrs_ms = float(np.mean(s - q) / self.fs * 1e3) if len(r) else float("nan")
         hr = float(np.mean(60 * self.fs / np.diff(r))) if len(r) > 1 else float("nan")
-        return PanTompkinsResult(stages, qrs_mwi, r, q, s, trace, qrs_ms, hr)
+        return PanTompkinsFilterResult(stages, qrs_mwi, r, q, s, trace, qrs_ms, hr)
 
     def stage_delays(self) -> dict:
-        bp = self.lp_delay + self.hp_delay
-        der = bp + self.der_delay
-        return {"lowpass": self.lp_delay, "highpass": bp, "derivative": der, "squared": der, "mwi": der + (self.mwi_width - 1) / 2}
+        bp = self.delay_lp + self.delay_hp
+        der = bp + self.delay_der
+        return {"lowpass": self.delay_lp, "highpass": bp, "derivative": der, "squared": der, "mwi": der + (self.mwi_width - 1) / 2}
 
     def summary_str(self) -> str:
         return(f"fs = {self.fs:g} Hz\n"
                f"Lowpass: M = {self.m_lp}, gain = {self.gain_lp}, delay = {self.delay_lp} samples, "
                f"fc = {self.fc_low:.1f} Hz\n"
-               f"Highpass: M = {self.m_hp}, gain = {self.gain_hp}, delay = {self.delay_lp} samples,"
+               f"Highpass: M = {self.m_hp}, gain = {self.gain_hp}, delay = {self.delay_hp} samples,"
                f"fc = {self.fc_high:.1f} Hz\n"
                f"Derivative: delay = {self.delay_der} samples\n"
                f"Moving-Window Integration: {self.mwi_width} samples ({self.mwi_width / self.fs * 1e3:.0f} ms)")
