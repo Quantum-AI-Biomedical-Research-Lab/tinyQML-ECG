@@ -4,7 +4,7 @@ This is the repository for the project:
 
 **Project title:** 'Quantum machine learning models for biomedical time-series: applications to ECG signal processing'
 
-**Funding agency**: Ministry of Education, Taiwan ROC
+**Funding agency**: Ministry of Education (Taiwan), TEEP internship program, project No. EORPD2R0281
 
 **IRB No.:** 202501594B0
 
