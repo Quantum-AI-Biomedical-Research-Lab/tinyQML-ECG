@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 from dataclasses import dataclass
@@ -66,7 +67,8 @@ class DataExtractor:
 
     def save_features(self, features: list[BeatFeature], path: str) -> None:
         df = self.features_to_dataframe(features)
-        df.to_csv(path, index=False)
+        file_exists = os.path.exists(path)
+        df.to_csv(path, mode="a", header=not file_exists, index=False)
         print(f"Saved {len(df)} beats to {path}")
 
     def extract_record(self, record_id: str, ecg: np.ndarray, path: str) -> None:
