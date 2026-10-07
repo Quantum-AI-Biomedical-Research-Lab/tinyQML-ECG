@@ -10,6 +10,7 @@ class PanTompkinsFilterResult:
     q_points: np.ndarray
     s_points: np.ndarray
     threshold_trace: np.ndarray
+    rr_intervals_ms: np.ndarray
     qrs_duration_ms: float
     heart_rate_bpm: float
 
@@ -203,9 +204,10 @@ class PanTompkinsFilter:
         stages = self.filter_stages(x)
         qrs_mwi, trace = self._adaptive_threshold(stages["highpass"], stages["derivative"], stages["mwi"])
         q, r, s = self._qrs_points(x, qrs_mwi)
+        rr = (np.diff(r) / self.fs * 1e3) if len(r) > 1 else np.array([])
         qrs_ms = float(np.mean(s - q) / self.fs * 1e3) if len(r) else float("nan")
         hr = float(np.mean(60 * self.fs / np.diff(r))) if len(r) > 1 else float("nan")
-        return PanTompkinsFilterResult(stages, qrs_mwi, r, q, s, trace, qrs_ms, hr)
+        return PanTompkinsFilterResult(stages, qrs_mwi, r, q, s, trace, rr, qrs_ms, hr)
 
     def stage_delays(self) -> dict:
         bp = self.delay_lp + self.delay_hp
