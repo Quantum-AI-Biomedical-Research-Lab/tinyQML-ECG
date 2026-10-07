@@ -47,6 +47,9 @@ class DataExtractor:
                     qrs_duration_ms=qrs_duration_ms
                 )
             )
+        if len(features) >= 2:
+            if features[0].rr_interval_ms is None or np.isnan(features[0].rr_interval_ms):
+                features[0].rr_interval_ms = features[1].rr_interval_ms
         return features
 
     def features_to_dataframe(self, features: list[BeatFeature]) -> pd.DataFrame:
