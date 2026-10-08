@@ -1,6 +1,6 @@
 import numpy as np
 
-class :
+class ZScoreScaler:
 
     def __init__(self):
         self.mean = None
