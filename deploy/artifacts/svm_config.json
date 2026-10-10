@@ -1,0 +1,58 @@
+{
+    "model_name": "svm",
+    "optimal_threshold": -0.17162762508062035,
+    "positive_class": 1,
+    "negative_class": 0,
+    "test_metrics": {
+        "threshold": -0.17162762508062035,
+        "accuracy": 0.688722430295464,
+        "sensitivity_se": 0.7424931756141947,
+        "specificity_sp": 0.6434049079754601,
+        "ppv_precision": 0.6370023419203747,
+        "npv": 0.7477718360071302,
+        "f1_score": 0.6857142857142857,
+        "auc_roc": 0.7524269134796273,
+        "average_precision": 0.6921963356471224,
+        "balanced_accuracy": 0.6929490417948274,
+        "mcc": 0.3853357209979487,
+        "tp": 816,
+        "fp": 465,
+        "tn": 839,
+        "fn": 283
+    },
+    "model_type": "SVC",
+    "score_type": "decision_function",
+    "threshold_type": "decision_score_threshold",
+    "validation_f1_at_threshold": 0.7231920199501246,
+    "best_cv_f1": 0.6630301264469967,
+    "best_params": {
+        "clf__C": "0.1",
+        "clf__gamma": "1.0",
+        "clf__kernel": "rbf",
+        "transform": "passthrough"
+    },
+    "kernel": "rbf",
+    "C": 0.1,
+    "gamma": 1.0,
+    "n_support_vectors_per_class": [
+        3129,
+        3186
+    ],
+    "total_support_vectors": 6315,
+    "support_vectors_shape": [
+        6315,
+        5
+    ],
+    "dual_coef_shape": [
+        1,
+        6315
+    ],
+    "intercept": [
+        0.6481928469374556
+    ],
+    "input_feature_count": 5,
+    "threshold_selection_metric": "F1 on validation",
+    "cv_strategy": "StratifiedGroupKFold",
+    "cv_splits": 5,
+    "seed": 42
+}
