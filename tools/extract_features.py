@@ -1,45 +1,48 @@
 import os
 import wfdb
 import numpy as np
+import pandas as pd
+from pathlib import Path
 from src.filters.pan_tompkins import PanTompkinsFilter
 from src.features.data_extractor import DataExtractor, BeatFeature
 
 FS = 100
-NUM_RECORD = 1000
-base_path = "data/physionet.org/files/ptb-xl/1.0.3/records100"
-output_path = "dataqml/ecg_features.csv"
+LEAD = "II"
+NUM_RECORDS = 5000
+BASE = Path("data/physionet.org/files/ptb-xl/1.0.3")
+OUT_FEATURES = Path("dataqml/ecg_features.csv")
+OUT_LOG = Path("dataqml/extraction_log.csv")
 
-def load_lead(record_id):
-    record = f"{record_id:05d}"
-    folder = f"{(record_id // 1000) * 1000:05d}"
-    path = os.path.join(base_path, folder, f"{record}_lr")
-    if not os.path.exists(path + ".hea"):
-        return None
-    signal, meta = wfdb.rdsamp(path)
-    return signal[:, 0].astype(np.float64)
+def load_lead(filename_lr: str) -> np.ndarray:
+    sig, meta = wfdb.rdsamp(str(BASE / filename_lr))
+    return sig[:, meta["sig_name"].index(LEAD)].astype(np.float64)
 
 def main():
-    pt = PanTompkinsFilter(fs=FS)
-    de = DataExtractor(pt)
-    skipped = []
-    if os.path.exists(output_path):
-        os.remove(output_path)
-    for record_id in range(1, NUM_RECORD):
-        record = f"{record_id:05d}"
-        record_name = f"{record}_lr"
+    db = pd.read_csv(BASE / "ptbxl_database.csv", index_col="ecg_id").sort_index()
+    db = db.head(NUM_RECORDS)
+    de = DataExtractor(PanTompkinsFilter(fs=FS))
+    rows, log = [], []
+    for filename in db["filename_lr"]:
+        record_name = Path(filename).name
         try:
-            x = load_lead(record_id)
-            if x is None:
-                print(f"SKIP: {record}_lr not found")
-                skipped.append(record)
-                continue
-            de.extract_record(record_name, x, output_path)
+            feats, res = de.extract_beat_features(record_name, load_lead(filename))
+            rows.extend(feats)
+            log.append({"record_id": record_name, "status": "ok",
+                        "beats_detected": len(res.r_peaks), "beats_kept": len(feats),
+                        "heart_rate_bpm": res.heart_rate_bpm})
         except Exception as e:
-            print(f"ERROR {record}_lr: {e}")
-            skipped.append(record)
-    if skipped:
-        print("\nSkipped records:")
-        print(", ".join(skipped))
+            log.append({"record_id": record_name, "status": f"error: {e}",
+                        "beats_detected": 0, "beats_kept": 0, "heart_rate_bpm": np.nan})
+    OUT_FEATURES.parent.mkdir(parents=True, exist_ok=True)
+    de.features_to_dataframe(rows).to_csv(OUT_FEATURES, index=False)
+    log_df = pd.DataFrame(log)
+    log_df.to_csv(OUT_LOG, index=False)
+    ok = log_df["status"] == "ok"
+    print(f"Successful: {ok.sum()} / {len(log_df)} records, sum: {len(rows)} beats")
+    print(f"Error: {(~ok).sum()} records")
+    print(f"Records containing fewer than 3 beats: {(log_df['beats_kept'] < 3).sum()}")
+    print(f"Beat rejection rate at the boundaries: "
+          f"{1 - log_df['beats_kept'].sum() / max(log_df['beats_detected'].sum(), 1):.1%}")
 
 if __name__ == "__main__":
     main()
