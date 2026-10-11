@@ -19,7 +19,7 @@ OUT_TAB = Path("results/classical")
 OUT_FIG = Path("results/classical/figures")
 SEED = 42
 N_BOOT = 1000
-FEATURES = ["q_amplitude", "r_amplitude", "s_amplitude", "rr_interval_ms", "qrs_duration_ms"]
+FEATURES = ["q_amplitude", "r_amplitude", "s_amplitude", "rr_interval_ms", "qrs_duration_ms", "p_amplitude", "t_amplitude", "st_level", "pq_interval_ms", "qt_interval_ms", "qtc_ms", "st_segment_ms"]
 
 plt.rcParams.update({
     "font.family": "serif", "font.size": 10, "axes.grid": True, "grid.alpha": 0.3,
@@ -62,10 +62,16 @@ def make_models(seed: int) -> dict:
             max_iter=300, learning_rate=0.05, class_weight="balanced", random_state=seed),
     }
 
+def get_pos_prob(model, X: np.ndarray) -> np.ndarray:
+    clf = model.steps[-1][1] if hasattr(model, "steps") else model
+    classes = clf.classes_
+    pos_idx = np.where((classes == 1) | (classes == "1"))[0][0]
+    return model.predict_proba(X)[:, pos_idx]
+
 def run_beat_level(model, tr, va, te):
     model.fit(tr[FEATURES].to_numpy(), tr["label"].to_numpy())
     def record_prob(df):
-        p = model.predict_proba(df[FEATURES].to_numpy())[:, 1]
+        p = get_pos_prob(model, df[FEATURES].to_numpy())
         return pd.Series(p, index=df["record_id"].to_numpy()).groupby(level=0).mean()
     return record_prob(va), record_prob(te)
 
@@ -75,12 +81,25 @@ def run_record_level(model, tr, va, te):
     out = []
     for df in (va, te):
         X, _ = aggregate_records(df)
-        out.append(pd.Series(model.predict_proba(X.to_numpy())[:, 1], index=X.index))
+        p = get_pos_prob(model, X.to_numpy())
+        out.append(pd.Series(p, index=X.index))
     return out
 
 def youden_threshold(y: np.ndarray, p: np.ndarray) -> float:
     fpr, tpr, thr = roc_curve(y, p)
     return float(min(thr[np.argmax(tpr - fpr)], 1.0))
+
+# def youden_threshold(y: np.ndarray, p: np.ndarray) -> float:
+#     fpr, tpr, thresholds = roc_curve(y, p)
+
+#     valid = np.isfinite(thresholds)
+#     j = tpr - fpr
+#     j[~valid] = -np.inf
+
+#     if not valid.any():
+#         return 0.5
+
+#     return float(thresholds[np.argmax(j)])
 
 def evaluate(y: np.ndarray, p: np.ndarray, thr: float) -> dict:
     yhat = (p >= thr).astype(int)
@@ -125,6 +144,7 @@ def main():
     for name, df in (("train", tr), ("val", va), ("test", te)):
         _, y = aggregate_records(df)
         print(f"{name:5s}: {len(y):4d} records, {len(df):6d} beats, abnormality rate {y.mean():.1%}")
+
     rows, roc_data = [], {}
     settings = (("Beat-Level", run_beat_level), ("Record-Level", run_record_level))
     for setting, runner in settings:
@@ -140,6 +160,7 @@ def main():
             if setting == "Record-Level":
                 fpr, tpr, _ = roc_curve(y_te.to_numpy(), p_te)
                 roc_data[name] = (fpr, tpr, metrics["AUC"])
+
     res = pd.DataFrame(rows)
     print(res.round(3).to_string(index=False))
     res.to_csv(OUT_TAB / "baselines_record_level.csv", index=False)

@@ -28,12 +28,14 @@ class DataExtractor:
         self.pt = pt
         self.fs = pt.fs
         self.sos = butter(2, band_hz, btype="bandpass", fs=self.fs, output="sos")
+        self.sos_wave = butter(2, (0.5, 15.0), btype="bandpass", fs=self.fs, output="sos")
         self.delineator = WaveDelineator(self.fs)
 
     def delineate_record(self, ecg: np.ndarray):
         ecg = np.asarray(ecg, dtype=np.float64)
         res = self.pt.run(ecg)
         xf = sosfiltfilt(self.sos, ecg)
+        xs = sosfiltfilt(self.sos_wave, ecg)
         d = np.gradient(xf) * self.fs
         q_pts, r_pts, s_pts = res.q_points, res.r_peaks, res.s_points
         n = min(len(q_pts), len(r_pts), len(s_pts))
@@ -46,10 +48,10 @@ class DataExtractor:
             w = self.delineator.run(xf, d, q, r, s, rr)
             if np.isnan(w.baseline): continue
             beats.append((i, q, r, s, rr, w))
-        return res, xf, beats
+        return res, xf, xs, beats
 
     def extract_beat_features(self, record_id: str, ecg: np.ndarray) -> tuple[list[BeatFeature], PanTompkinsFilterResult]:
-        res, xf, beats = self.delineate_record(ecg)
+        res, xf, _, beats = self.delineate_record(ecg)
         features = []
         for i, q, r, s, rr, w in beats:
             features.append(BeatFeature(
