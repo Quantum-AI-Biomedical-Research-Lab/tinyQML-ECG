@@ -125,7 +125,6 @@ def main():
     for name, df in (("train", tr), ("val", va), ("test", te)):
         _, y = aggregate_records(df)
         print(f"{name:5s}: {len(y):4d} records, {len(df):6d} beats, abnormality rate {y.mean():.1%}")
-
     rows, roc_data = [], {}
     settings = (("Beat-Level", run_beat_level), ("Record-Level", run_record_level))
     for setting, runner in settings:
@@ -141,7 +140,6 @@ def main():
             if setting == "Record-Level":
                 fpr, tpr, _ = roc_curve(y_te.to_numpy(), p_te)
                 roc_data[name] = (fpr, tpr, metrics["AUC"])
-
     res = pd.DataFrame(rows)
     print(res.round(3).to_string(index=False))
     res.to_csv(OUT_TAB / "baselines_record_level.csv", index=False)
