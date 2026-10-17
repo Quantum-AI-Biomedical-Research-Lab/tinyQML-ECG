@@ -1,0 +1,22 @@
+{
+  "fs": 100,
+  "window_s": 10,
+  "hop_s": 2,
+  "adc_bits": 12,
+  "vref": 3.3,
+  "ad8232_gain": 1100,
+  "decision_k": 2,
+  "decision_n": 3,
+  "max_leads_off_frac": 0.0,
+  "min_std_mv": 0.02,
+  "max_std_mv": 3.0,
+  "min_kurtosis": 3.0,
+  "max_saturation_frac": 0.02,
+  "min_beats": 3,
+  "hr_range": [30, 220],
+  "default_age": 50,
+  "default_sex": 0,
+  "web_port": 7000,
+  "replay_record": "../../../data/physionet.org/files/ptb-xl/1.0.3/records100/00000/00008_lr",
+  "log_file": "inference_log.csv"
+}
